@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# env files
+server/.env
+*.env
+
+# build outputs
+client/dist/
+server/dist/
+
+# logs
+*.log
+
+# misc
+.DS_Store
+.vscode/
+# uploaded files
+server/uploads/
