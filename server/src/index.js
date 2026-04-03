@@ -9,7 +9,7 @@ async function main() {
   }
 
   const port = Number(process.env.PORT || 5000);
-  await connectDB(process.env.MONGODB_URI);
+  await connectDB();
   // Fix potential duplicate-null unique index on supports.ticketId
   try {
     const mongoose = require('mongoose');

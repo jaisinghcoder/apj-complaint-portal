@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
 
 async function connectDB(mongoUri) {
-  if (!mongoUri) {
+  const uri = mongoUri || process.env.MONGODB_URI;
+
+  if (!uri) {
     throw new Error('Missing MONGODB_URI');
   }
 
   mongoose.set('strictQuery', true);
-  await mongoose.connect(mongoUri);
+  await mongoose.connect(uri);
   return mongoose.connection;
 }
 

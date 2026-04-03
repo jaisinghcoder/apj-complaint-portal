@@ -20,7 +20,7 @@ async function seedAdmin() {
     throw new Error('Missing ADMIN_EMAIL or ADMIN_PASSWORD');
   }
 
-  await connectDB(process.env.MONGODB_URI);
+  await connectDB();
 
   const existing = await User.findOne({ email });
   if (existing) {
