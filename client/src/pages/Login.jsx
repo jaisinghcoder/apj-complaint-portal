@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 
 export default function Login() {
-  const { login, error, setError } = useAuth();
+  const { login, loginWithGoogle, error, setError, setUser } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -24,16 +24,100 @@ export default function Login() {
     }
   }
 
+  async function onGoogleLogin(credential) {
+    if (!credential) {
+      setError('Google login failed');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      // Optimistically show Google profile picture and basic info immediately
+      try {
+        const parts = String(credential).split('.');
+        if (parts.length >= 2) {
+          const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, '=');
+          const payload = JSON.parse(atob(padded));
+          const picture = payload.picture;
+          const name = payload.name;
+          const email = payload.email;
+          if (picture && setUser) {
+            setUser((prev) => ({ ...(prev || {}), avatar: picture, name: prev?.name || name, email: prev?.email || email }));
+          }
+        }
+      } catch (err) {
+        // ignore optimistic preview errors
+      }
+
+      await loginWithGoogle(credential);
+      navigate('/dashboard', { replace: true });
+    } catch (e2) {
+      setError(e2.message || 'Google login failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    const initializeGoogle = () => {
+      if (!window.google?.accounts?.id) return;
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (resp) => onGoogleLogin(resp?.credential),
+        ux_mode: 'popup',
+      });
+
+      const container = document.getElementById('google-signin-button');
+      if (container) {
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          width: '100%',
+        });
+      }
+    };
+
+    const existingScript = document.getElementById('google-client-script');
+    if (existingScript) {
+      initializeGoogle();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-client-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, []);
+
   return (
     <div className="container">
-      <div className="card">
+      <div className="login-card">
         <h1>Login</h1>
         <p className="muted">Sign in to submit and track complaints.</p>
 
-        <form onSubmit={onSubmit} className="form">
+        <form onSubmit={onSubmit} className="form">      
           <label>
             Email
-            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+            <input 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              type="email" 
+              required
+              className="input-full"
+            />
           </label>
           <label>
             Password
@@ -43,12 +127,12 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)} 
                 type={showPassword ? 'text' : 'password'} 
                 required
-                style={{ paddingRight: '40px', width: '100%', boxSizing: 'border-box' }}
+                className="input-full"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={setShowPassword ? 'Hide password' : 'Show password'}
                 style={{
                   position: 'absolute',
                   right: '10px',
@@ -77,14 +161,30 @@ export default function Login() {
               </button>
             </div>
           </label>
-
           {error ? <div className="error">{error}</div> : null}
 
           <button disabled={submitting} type="submit">{submitting ? 'Signing in…' : 'Login'}</button>
+          <label className="or" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>or</label>
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <div id="google-signin-button" style={{ width: '100%', margin: '0 auto' }} />
+            {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+              <div className="muted" style={{ marginTop: '8px', color: 'green' }}>
+              </div>
+            ) : (
+              <div className="muted" style={{ marginTop: '8px' }}>
+                Google Sign-In not configured. Set VITE_GOOGLE_CLIENT_ID in .env.
+              </div>
+            )}
+          </div>
         </form>
 
-        <div className="row">
-          <span className="muted">No account?</span> <Link to="/register">Register</Link>
+        <div className="row" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+          <div>
+            <span className="muted">No account?</span> <Link to="/register">Register</Link>
+          </div>
+          <div>
+            <Link to="/forgot">Forgot password?</Link>
+          </div>
         </div>
       </div>
     </div>

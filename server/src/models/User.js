@@ -12,12 +12,19 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
     passwordHash: { type: String, required: true },
+    avatar: { type: String, default: null },
+      // Password reset token and expiration
+      resetToken: { type: String, default: null, index: true },
+      resetExpires: { type: Date, default: null },
+    phone: { type: String, trim: true, maxlength: 30, default: '' },
+    address: { type: String, trim: true, maxlength: 500, default: '' },
     role: {
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
       required: true,
     },
+      gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'], default: null },
   },
   { timestamps: true },
 );

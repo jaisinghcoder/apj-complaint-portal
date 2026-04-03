@@ -5,22 +5,34 @@
 
   /* Dark mode (default) */
   color-scheme: dark;
-  --bg: #070a18;
+  --bg: #1B3C53;
   --panel: rgba(18, 14, 44, 0.62);
   --panel-strong: rgba(18, 14, 44, 0.82);
   --border: rgba(120, 92, 255, 0.28);
-  --text: rgba(230, 235, 255, 0.92);
+  --text: rgb(255, 255, 255);
   --muted: rgba(190, 195, 255, 0.72);
   --accent: #ffffff;
   --accent-2: #7a5cff;
-  --danger: #ff3d7f;
+  --danger: #ff0000;
   --success: #34f5b5;
   --topbar-bg: rgba(0, 0, 0, 0.25);
   --topbar-border: rgba(255, 255, 255, 0.12);
+  --notification-bg: rgba(0, 0, 0, 0.2);
   --card-bg: rgba(0, 0, 0, 0.18);
-  --card-border: rgba(255, 255, 255, 0.12);
+  --card-border: rgb(255 255 255 / 25%);
   --input-bg: rgba(7, 10, 24, 0.55);
-  --button-bg: rgba(18, 14, 44, 0.72);
+  --button-bg: rgba(179, 97, 43, 0.582);
+  /* Hover / highlight colors used for interactive elements (theme-aware) */
+  --hover-bg: rgba(102, 135, 253, 0.46);
+  --status-bg: rgba(56, 142, 60, 0.15);
+  --status-color: #2e7d32;
+
+  /* Profile placeholder background (theme-aware) */
+  --profile-placeholder-bg: var(--bg);
+
+  /* Toast colors (dark theme default: white background with dark text) */
+  --toast-bg: #ffffff;
+  --toast-text: #000000;
 
   color: var(--text);
   background-color: var(--bg);
@@ -41,14 +53,50 @@
   --muted: rgba(0, 0, 0, 0.65);
   --accent: #000000;
   --accent-2: #5a4cbb;
-  --danger: #d32f2f;
+  --danger: #ff0000;
   --success: #00796b;
   --topbar-bg: rgba(255, 255, 255, 0.4);
   --topbar-border: rgba(0, 0, 0, 0.08);
+  --notification-bg: rgba(255, 255, 255, 0.2);
   --card-bg: rgba(255, 255, 255, 0.6);
   --card-border: rgba(0, 0, 0, 0.08);
   --input-bg: rgba(255, 255, 255, 0.9);
   --button-bg: rgba(240, 240, 242, 0.95);
+  /* Light theme overrides for interactive elements */
+  --hover-bg: rgba(90, 76, 187, 0.12);
+  --status-bg: rgba(0, 121, 107, 0.12);
+  --status-color: var(--success);
+  /* Light theme: use the dark background color for profile placeholder */
+  --profile-placeholder-bg: #1B3C53;
+
+  /* In light theme keep toast matching notification background/text */
+  --toast-bg: var(--notification-bg);
+  --toast-text: var(--text);
+}
+
+/* Light theme: explicit badge colors for statuses */
+[data-theme="light"] .badge-pending {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.22);
+  color: #92400e;
+}
+
+[data-theme="light"] .badge-in-progress {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.18);
+  color: #3730a3;
+}
+
+[data-theme="light"] .badge-escalated {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.2);
+  color: #7c2d12;
+}
+
+[data-theme="light"] .badge-overdue {
+  background: rgba(255, 0, 0, 0.08);
+  border-color: rgba(255, 0, 0, 0.45);
+  color: #7f1d1d;
 }
 
 a {
@@ -71,6 +119,22 @@ h1 {
   line-height: 1.1;
 }
 
+/* Center headings and paragraphs globally */
+h1,
+p {
+  text-align: center;
+}
+
+/* Left-align paragraphs only on the admin dashboard */
+.admin-dashboard p {
+  text-align: left;
+}
+
+/* Ensure SVG chart text on admin dashboard follows theme text color */
+.admin-dashboard .dataChart text {
+  fill: var(--text);
+}
+
 input,
 select,
 textarea {
@@ -87,6 +151,19 @@ textarea {
   resize: vertical;
 }
 
+ .terms-row
+ {
+    max-width: 100%;
+    
+  }
+
+.terms-checkbox
+ {
+    width: 12px;
+    height: 16px;
+    
+  }
+
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -101,4 +178,47 @@ button {
 }
 button:hover {
   border-color: var(--accent);
+}
+
+/* Card icon used in dashboard tiles */
+.cardIcon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Remove any CSS filter applied to the Google sign-in element so the
+   icon appears identical in light and dark modes. Scoped to the
+   injected obfuscated class used by the button. */
+#google-signin-button .LgbsSe-Bz112c,
+#google-signin-button .LgbsSe-Bz112c svg,
+#google-signin-button .LgbsSe-Bz112c path,
+#google-signin-button .LgbsSe-Bz112c * {
+  filter: none !important;
+}
+
+[data-theme="light"] .dataChart text {
+  fill: #000000;
+}
+
+/* Simple toast / notification styling */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--toast-bg);
+  color: var(--toast-text);
+  padding: 0.6em 1em;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  z-index: 9999;
+  border-left: 4px solid var(--status-color);
+  min-width: 220px;
+  text-align: center;
+}
+.toast.success {
+  border-left-color: var(--success);
 }

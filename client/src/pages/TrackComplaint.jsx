@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react';
 import { http } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
+import { computeSLA, formatDuration, SLA_HOURS } from '../utils/sla';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
+
+function SlaInfo({ item }) {
+  if (!item || !item.createdAt) return null;
+  const statusForSla = (item.status || '');
+  const JUST_NOW_MS = 5 * 60 * 1000;
+  const { elapsedMs: _elapsedOnly } = computeSLA(item, SLA_HOURS);
+  if (statusForSla === 'Pending' && _elapsedOnly < JUST_NOW_MS) {
+    return <span className="complaintMeta">Just now</span>;
+  }
+  const slaForStatus = statusForSla === 'In Progress' ? 72 : statusForSla === 'Escalated' ? 168 : (statusForSla === 'Pending' ? 24 : SLA_HOURS);
+  const { elapsedMs, remainingMs, slaMs, overdue } = computeSLA(item, slaForStatus);
+  if (overdue) {
+    return <span className="complaintMeta" style={{ color: '#ff5c5c' }}>Overdue</span>;
+  }
+  return <span className="complaintMeta">Time to SLA: {formatDuration(remainingMs)}</span>;
+}
 
 function resolveAttachmentUrl(url) {
   if (!url) return '';
@@ -19,6 +36,7 @@ export default function TrackComplaint() {
 
   const [pendingComplaints, setPendingComplaints] = useState([]);
   const [inProgressComplaints, setInProgressComplaints] = useState([]);
+  const [escalatedComplaints, setEscalatedComplaints] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState('');
 
@@ -52,13 +70,15 @@ export default function TrackComplaint() {
     setListError('');
 
     try {
-      const [pendingResp, inProgressResp] = await Promise.all([
+      const [pendingResp, inProgressResp, escalatedResp] = await Promise.all([
         http.get('/api/complaints?status=Pending', { token }),
         http.get('/api/complaints?status=In%20Progress', { token }),
+        http.get('/api/complaints?status=Escalated', { token }),
       ]);
 
       setPendingComplaints(pendingResp.complaints || []);
       setInProgressComplaints(inProgressResp.complaints || []);
+      setEscalatedComplaints(escalatedResp.complaints || []);
     } catch (e) {
       setListError(e.message || 'Failed to load complaints');
     } finally {
@@ -78,7 +98,7 @@ export default function TrackComplaint() {
         {loadingList && <div style={{ marginTop: '1rem' }}>Loading your complaints…</div>}
         {listError && <div className="error" style={{ marginTop: '1rem' }}>{listError}</div>}
 
-        {(pendingComplaints.length > 0 || inProgressComplaints.length > 0) && (
+        {(pendingComplaints.length > 0 || inProgressComplaints.length > 0 || escalatedComplaints.length > 0) && (
           <div className="card" style={{ marginTop: '1.5rem' }}>
             <h2>Your active complaints</h2>
             {pendingComplaints.length > 0 && (
@@ -90,6 +110,7 @@ export default function TrackComplaint() {
                       <div className="complaintInfo">
                         <strong>{c.title}</strong>
                         <span className="complaintMeta">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        <SlaInfo item={c} />
                         <span className={`badge badge-${(c.status || '').toLowerCase().replace(/\s/g, '-')}`}>{c.status}</span>
                       </div>
                       <div className="complaintActions">
@@ -118,6 +139,36 @@ export default function TrackComplaint() {
                       <div className="complaintInfo">
                         <strong>{c.title}</strong>
                         <span className="complaintMeta">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        <SlaInfo item={c} />
+                        <span className={`badge badge-${(c.status || '').toLowerCase().replace(/\s/g, '-')}`}>{c.status}</span>
+                      </div>
+                      <div className="complaintActions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComplaintId(c._id);
+                            loadComplaintById(c._id);
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {escalatedComplaints.length > 0 && (
+              <div className="complaintSection">
+                <h3>Escalated</h3>
+                <ul className="complaintList">
+                  {escalatedComplaints.map((c) => (
+                    <li key={c._id} className="complaintItem">
+                      <div className="complaintInfo">
+                        <strong>{c.title}</strong>
+                        <span className="complaintMeta">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        <SlaInfo item={c} />
                         <span className={`badge badge-${(c.status || '').toLowerCase().replace(/\s/g, '-')}`}>{c.status}</span>
                       </div>
                       <div className="complaintActions">
@@ -148,6 +199,7 @@ export default function TrackComplaint() {
               <div><strong>Title:</strong> {complaint.title}</div>
               <div><strong>Category:</strong> {complaint.category}</div>
               <div><strong>Status:</strong> <span className={`badge badge-${(complaint.status || '').toLowerCase().replace(/\s/g, '-')}`}>{complaint.status}</span></div>
+              <div><strong>SLA:</strong> <SlaInfo item={complaint} /></div>
               <div><strong>Description:</strong> {complaint.description}</div>
               {complaint.attachment && (
                 <div><strong>Attachment:</strong> <a href={resolveAttachmentUrl(complaint.attachment)} target="_blank" rel="noopener noreferrer">View</a></div>

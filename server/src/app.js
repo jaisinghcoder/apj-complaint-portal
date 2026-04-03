@@ -4,6 +4,8 @@ const path = require('path');
 
 const { authRouter } = require('./routes/auth');
 const { complaintsRouter } = require('./routes/complaints');
+const { supportRouter } = require('./routes/support');
+const { notificationsRouter } = require('./routes/notifications');
 
 function createApp() {
   const app = express();
@@ -24,6 +26,8 @@ function createApp() {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRouter);
   app.use('/api/complaints', complaintsRouter);
+  app.use('/api/support', supportRouter);
+  app.use('/api/notifications', notificationsRouter);
 
   app.use((req, res) => res.status(404).json({ error: { message: 'Route not found' } }));
 

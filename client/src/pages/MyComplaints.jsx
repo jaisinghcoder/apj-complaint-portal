@@ -22,6 +22,68 @@ export default function MyComplaints() {
     setComplaints(data.complaints || []);
   }
 
+  const updateComplaintInState = (complaint) => {
+    setComplaints((prev) => prev.map((c) => (c._id === complaint._id ? complaint : c)));
+  };
+
+  const renderStars = (rating) => {
+    if (!rating) return null;
+    const filled = '★'.repeat(rating);
+    const empty = '☆'.repeat(5 - rating);
+    return <span style={{ color: '#d69e2e' }}>{filled + empty}</span>;
+  };
+
+  async function submitRating(complaint) {
+    const ratingInput = window.prompt(
+      'Rate this resolved complaint (1-5):',
+      complaint.rating ?? ''
+    );
+    if (ratingInput === null) return;
+
+    const rating = ratingInput.trim() === '' ? undefined : Number(ratingInput);
+    if (rating === undefined) return;
+
+    if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+      alert('Rating must be a number between 1 and 5.');
+      return;
+    }
+
+    try {
+      const data = await http.patch(
+        `/api/complaints/${complaint._id}/feedback`,
+        { rating },
+        { token }
+      );
+      updateComplaintInState(data.complaint);
+      alert('Rating saved.');
+    } catch (e) {
+      alert(e.message || 'Failed to save rating');
+    }
+  }
+
+  async function submitFeedback(complaint) {
+    const feedbackInput = window.prompt(
+      'Leave feedback (optional):',
+      complaint.feedback || ''
+    );
+    if (feedbackInput === null) return;
+
+    const feedback = feedbackInput.trim();
+    if (!feedback) return;
+
+    try {
+      const data = await http.patch(
+        `/api/complaints/${complaint._id}/feedback`,
+        { feedback },
+        { token }
+      );
+      updateComplaintInState(data.complaint);
+      alert('Feedback submitted.');
+    } catch (e) {
+      alert(e.message || 'Failed to submit feedback');
+    }
+  }
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -72,6 +134,8 @@ export default function MyComplaints() {
                   <th>Status</th>
                   <th>Attachment</th>
                   <th>Created</th>
+                  <th>Rating</th>
+                  <th>Feedback</th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +154,32 @@ export default function MyComplaints() {
                       )}
                     </td>
                     <td>{new Date(c.createdAt).toLocaleString()}</td>
+                    <td>
+                      {c.status === 'Resolved' ? (
+                        c.rating ? (
+                          renderStars(c.rating)
+                        ) : (
+                          <button type="button" onClick={() => submitRating(c)}>
+                            Rate
+                          </button>
+                        )
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {c.status === 'Resolved' ? (
+                        c.feedback ? (
+                          <span className="muted">Submitted</span>
+                        ) : (
+                          <button type="button" onClick={() => submitFeedback(c)}>
+                            Leave feedback
+                          </button>
+                        )
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

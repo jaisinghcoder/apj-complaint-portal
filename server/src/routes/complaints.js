@@ -84,7 +84,7 @@ router.post('/', authRequired, upload.single('attachment'), async (req, res) => 
 });
 
 router.get('/', authRequired, async (req, res) => {
-  const { status, category, userId } = req.query;
+  const { status, category, categoryStartsWith, userId } = req.query;
 
   const filter = {};
 
@@ -94,11 +94,17 @@ router.get('/', authRequired, async (req, res) => {
     filter.user = userId;
   }
 
-  if (status && ['Pending', 'In Progress', 'Resolved'].includes(String(status))) {
+  if (status && ['Pending', 'In Progress', 'Escalated', 'Resolved'].includes(String(status))) {
     filter.status = String(status);
   }
   if (category) {
     filter.category = String(category);
+  }
+  if (categoryStartsWith && String(categoryStartsWith).trim().length === 1) {
+    // case-insensitive starts-with match
+    const ch = String(categoryStartsWith).trim();
+    const esc = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.category = { $regex: `^${esc}`, $options: 'i' };
   }
 
   let query = Complaint.find(filter).sort({ createdAt: -1 }).limit(200);
@@ -107,6 +113,42 @@ router.get('/', authRequired, async (req, res) => {
   }
 
   const complaints = await query;
+
+  // Auto-escalate complaints older than 7 days (do not escalate already Escalated/Resolved)
+  try {
+    const ESCALATION_DAYS = 7;
+    const ESCALATION_MS = ESCALATION_DAYS * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const updates = [];
+    for (const c of complaints) {
+      if (!c || !c.createdAt) continue;
+      if (['Escalated', 'Resolved'].includes(String(c.status))) continue;
+      const created = new Date(c.createdAt).getTime();
+      if (now - created > ESCALATION_MS) {
+        const from = c.status;
+        // Update in DB and push a history entry noting auto-escalation
+        updates.push(
+          Complaint.findByIdAndUpdate(c._id, {
+            $set: { status: 'Escalated' },
+            $push: { history: { from, to: 'Escalated', note: 'Auto-escalated after 7 days', changedBy: req.user.id } },
+          }, { new: true }),
+        );
+      }
+    }
+    if (updates.length > 0) {
+      // apply updates and refresh the complaints list to return current values
+      await Promise.all(updates);
+      const refreshed = await Complaint.find(filter).sort({ createdAt: -1 }).limit(200);
+      if (req.user.role === 'admin') {
+        await Complaint.populate(refreshed, { path: 'user', select: 'name email' });
+      }
+      return res.json({ complaints: refreshed });
+    }
+  } catch (err) {
+    // don't block response on escalation errors
+    // eslint-disable-next-line no-console
+    console.error('Failed to auto-escalate complaints:', err);
+  }
 
   return res.json({ complaints });
 });
@@ -127,7 +169,7 @@ router.get('/:id', authRequired, async (req, res) => {
 });
 
 const updateStatusSchema = z.object({
-  status: z.enum(['Pending', 'In Progress', 'Resolved']),
+  status: z.enum(['Pending', 'In Progress', 'Escalated', 'Resolved']),
   note: z.string().max(500).optional(),
 });
 
@@ -151,6 +193,43 @@ router.patch('/:id/status', authRequired, requireRole('admin'), async (req, res)
     note: note || '',
     changedBy: req.user.id,
   });
+
+  await complaint.save();
+  return res.json({ complaint });
+});
+
+const feedbackSchema = z.object({
+  rating: z.number().int().min(1).max(5).optional(),
+  feedback: z.string().max(1000).optional(),
+});
+
+router.patch('/:id/feedback', authRequired, async (req, res) => {
+  const parsed = feedbackSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: { message: 'Invalid input' } });
+  }
+
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    return res.status(404).json({ error: { message: 'Not found' } });
+  }
+
+  // Only the owner (or an admin) can submit feedback, and only after resolution
+  if (req.user.role !== 'admin' && complaint.user.toString() !== req.user.id) {
+    return res.status(403).json({ error: { message: 'Forbidden' } });
+  }
+  if (complaint.status !== 'Resolved') {
+    return res.status(400).json({ error: { message: 'Can only submit feedback after complaint is resolved' } });
+  }
+
+  const { rating, feedback } = parsed.data;
+  if (rating === undefined && (feedback === undefined || feedback.trim() === '')) {
+    return res.status(400).json({ error: { message: 'Provide a rating or feedback' } });
+  }
+
+  if (rating !== undefined) complaint.rating = rating;
+  if (feedback !== undefined) complaint.feedback = feedback.trim();
+  complaint.feedbackAt = new Date();
 
   await complaint.save();
   return res.json({ complaint });

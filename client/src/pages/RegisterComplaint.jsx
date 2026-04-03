@@ -2,7 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { http } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 
-const CATEGORIES = ['Electricity', 'Water Supply', 'College Facilities', 'Other'];
+const CATEGORIES = [
+  'Electricity',
+  'Water Supply',
+  'Roads & Pathways',
+  'Sanitation',
+  'Security & Safety',
+  'Internet / Wi-Fi',
+  'Campus Facilities',
+  'Food Services / Canteen',
+  'Transportation',
+  'Garbage Collection',
+  'Noise',
+  'Lighting',
+  'Other',
+];
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function resolveAttachmentUrl(url) {
@@ -22,6 +36,7 @@ export default function RegisterComplaint() {
   const [description, setDescription] = useState('');
   const [attachment, setAttachment] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState('');
 
   async function load() {
     const data = await http.get('/api/complaints', { token });
@@ -114,6 +129,10 @@ export default function RegisterComplaint() {
       setAttachment(null);
       document.getElementById('attachmentInput').value = ''; // Reset file input
       await load();
+
+      // Show success toast
+      setSuccess('Complaint submitted successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (e2) {
       setError(e2.message || 'Failed to submit complaint');
     } finally {
@@ -127,6 +146,9 @@ export default function RegisterComplaint() {
     <div className="stack">
       <div className="card">
         <h2>Submit a Complaint</h2>
+        {success ? (
+          <div className="toast success" role="status" aria-live="polite">{success}</div>
+        ) : null}
         <form className="form" onSubmit={submitComplaint}>
           <label>
             Category

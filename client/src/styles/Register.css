@@ -1,0 +1,56 @@
+/* Styles for Register page terms and modal */
+.terms-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  margin: 8px 0;
+}
+.terms-checkbox {
+  margin: 0;
+  padding: 0;
+  margin-right: 8px;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.terms-label {
+  cursor: pointer;
+  user-select: text;
+}
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+.terms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.terms-modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  max-width: 720px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: auto;
+}
+.terms-modal h2 { margin-top: 0; }
+.terms-modal .modal-actions { margin-top: 12px; text-align: right; }
+.terms-modal .modal-actions button { margin-left: 8px; }
+
+@media (prefers-color-scheme: dark) {
+  /* In dark mode, make Terms & Conditions modal text black as requested */
+  .terms-modal {
+    color: #000;
+  }
+}

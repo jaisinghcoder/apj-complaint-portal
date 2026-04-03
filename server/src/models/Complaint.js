@@ -40,10 +40,26 @@ const complaintSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Resolved"],
+      enum: ["Pending", "In Progress", "Escalated", "Resolved"],
       default: "Pending",
       required: true,
       index: true,
+    },
+    // User feedback after the complaint has been resolved
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: null,
+    },
+    feedback: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    feedbackAt: {
+      type: Date,
+      default: null,
     },
     history: { type: [historySchema], default: [] },
   },
